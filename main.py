@@ -12,6 +12,11 @@ ACE = "A"
 SUITS = ("H", "C", "S", "D")
 POSSIBLE_NUM_PLAYERS = {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6}
 
+# these are options while players are navigating menus, they have to be lowercase b/c of the get_player_input function
+YES = ("y", "yes")
+NO = ("n", "no")
+QUIT = ("q", "quit")
+
 """CLASSES"""
 
 
@@ -58,39 +63,84 @@ class Player:
 
         return hand_values
 
+    def display_hands(self, dealer_hidden):    # returns info about the player's hand in a legible manner
+        legible_hand = ""
+        player = ""
+        display = ""
+        hand_size = len(self.hand)
+        hand_values = self.get_hand_value()
 
-# class Dealer:
+        if self.player_number == 0:
+            player = "The Dealer"
+        else:
+            player = f"Player {self.player_number}"
+
+        if hand_size == 2:
+            legible_hand = self.hand[0] + " and " + self.hand[1]
+        else:
+            for i in range(0, hand_size-2):
+                legible_hand = legible_hand + self.hand[i] + ","
+            legible_hand = legible_hand + " and " + self.hand[-1]
+
+        if len(hand_values) == 1:
+            display = player + " has " + legible_hand + ". Their hand's value is " + str(hand_values[0]) + "."
+        else:
+
+        ALSO WHAT IF DEALER HIDDEN
+
+        # The Dealer/Player X has 8H and KS/8H, KS, and 3D. Their hand's value is XX
+        # The Dealer has 8H and another card face down. Their hand's visible value is XX.
+
 
 """FUNCTIONS"""
+
+
+def get_player_choice(question, valid_inputs):
+    """A function that gets a player's choice using menu options, re-asking if the input is not understood"""
+
+    player_input = input(question)
+    valid_choice = False
+    while not valid_choice:
+        if player_input.lower() in valid_inputs:
+            valid_choice = True
+        else:
+            print("That wasn't understood, please enter a valid input.")
+            player_input = input(question)
+    return player_input
 
 
 def play_game(num_players):
     deck = Deck(6)
     shuffle(deck.shoe)
     players = {}
-    for player_num in range(0, num_players):  # creates hands for every player, player 0 is the dealer
-        players[player_num] = Player(player_num)
 
     print(f"\nWelcome to this {num_players}-player game of Blackjack!")
     print("Prepping the game...")
     playing = True
+
     while playing:
         if len(deck.shoe) < 60:
             print("Reshuffling deck...")
             deck = Deck(6)
             shuffle(deck.shoe)
 
+        for player_num in range(0, num_players):  # creates hands for every player, player 0 is the dealer
+            players[player_num] = Player(player_num)
+            deck.deal_out(player_num)
+            deck.deal_out(player_num)
 
-        ok_choice = False
-        while not ok_choice:
-            keep_playing = input("Play another round? [Y]es or [N]o?")
-            if keep_playing.lower() in ("y", "yes"):
-                ok_choice = True
-            elif keep_playing.lower() in ("n", "no"):
-                ok_choice = True
-                playing = False
-            else:
-                print("That wasn't understood, please enter a valid input.")
+
+
+
+
+
+        keep_playing = get_player_choice("Play another round?   ", [YES, NO])
+        if keep_playing in NO:
+            playing = False
+            print("That was fun!")
+        elif keep_playing in YES:
+            playing = True
+            print("Another round it is!")
 
 
 """MAIN"""
@@ -98,17 +148,11 @@ def play_game(num_players):
 running = True
 while running:
     print("Welcome to Blackjack!")
-    valid_choice = False
-    while not valid_choice:
-        menu_choice = input("How many human players are there? Pick a number between 1 and 6!\n(Enter \"quit\" to exit the game)  ")
-        if menu_choice in POSSIBLE_NUM_PLAYERS.keys():
-            valid_choice = True
-            play_game(POSSIBLE_NUM_PLAYERS[menu_choice])
-        elif menu_choice.lower() == "quit":
-            valid_choice = True
-            running = False
-        else:
-            print("Sorry, I didn't understand that. Please enter a valid input.")
+    menu_choice = get_player_choice("How many human players are there? Pick a number between 1 and 6!\n(Enter \"[Q]uit\" to exit the game)    ", (POSSIBLE_NUM_PLAYERS, QUIT))
+    if menu_choice in POSSIBLE_NUM_PLAYERS.keys():
+        play_game(POSSIBLE_NUM_PLAYERS[menu_choice])
+    elif menu_choice.lower() == "quit":
+        running = False
     print("Thanks for playing!")
 
 """TEST"""
