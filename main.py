@@ -16,6 +16,9 @@ POSSIBLE_NUM_PLAYERS = {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6}
 YES = ("y", "yes")
 NO = ("n", "no")
 QUIT = ("q", "quit")
+HIT = ("h", "hit")
+STAND = ("s", "stand")
+LOOK = ("l", "look")
 
 """CLASSES"""
 
@@ -63,34 +66,75 @@ class Player:
 
         return hand_values
 
-    def display_hands(self, dealer_hidden):    # returns info about the player's hand in a legible manner
+    def display_hands(self, dealer_hidden=False):    # returns info about the player's hand in a legible manner
         legible_hand = ""
-        player = ""
-        display = ""
+        legible_values = ""
         hand_size = len(self.hand)
         hand_values = self.get_hand_value()
+        num_hand_values = len(hand_values)
 
-        if self.player_number == 0:
-            player = "The Dealer"
-        else:
-            player = f"Player {self.player_number}"
+        if dealer_hidden:   # the dealer's second card is hidden until after all players have made their turn
+            display = f"The Dealer has {self.hand[0]} and one face-down card."
 
-        if hand_size == 2:
-            legible_hand = self.hand[0] + " and " + self.hand[1]
-        else:
-            for i in range(0, hand_size-2):
-                legible_hand = legible_hand + self.hand[i] + ","
-            legible_hand = legible_hand + " and " + self.hand[-1]
+        else:   # for all other cases, the hand's legible value is gotten below:
+            if self.player_number == 0:    # this if/else gets the player number or if 0, recognizes them as the dealer
+                player = "The Dealer"
+            else:
+                player = f"Player {self.player_number}"
 
-        if len(hand_values) == 1:
-            display = player + " has " + legible_hand + ". Their hand's value is " + str(hand_values[0]) + "."
-        else:
+            if hand_size == 2:  # prints the cards legibly depending on if there is two or more cards
+                legible_hand = self.hand[0] + " and " + self.hand[1]
+            else:
+                for i in range(0, hand_size-2):
+                    legible_hand = legible_hand + self.hand[i] + ", "
+                legible_hand = legible_hand + "and " + self.hand[-1]
 
-        ALSO WHAT IF DEALER HIDDEN
+            if num_hand_values == 1:    # prints the hand value(s) legibly depending on if there are 1, 2, or more possible values (depending on aces)
+                display = player + " has " + legible_hand + ". Their hand's value is " + str(hand_values[0]) + "."
+            elif num_hand_values == 2:
+                display = player + " has " + legible_hand + ". Their hand's value could be " + str(hand_values[0]) + " or " + str(hand_values[1]) + "."
+            else:
+                for i in range(0, num_hand_values-1):
+                    legible_values = legible_values + hand_values[i] + ", "
+                display = player + " has " + legible_hand + ". Their hand's value could be " + legible_values + "or " + str(hand_values[-1]) + "."
 
-        # The Dealer/Player X has 8H and KS/8H, KS, and 3D. Their hand's value is XX
-        # The Dealer has 8H and another card face down. Their hand's visible value is XX.
+        return display  # returns the string to display
 
+    def player_turn(self, deck, players):  # the goings-on of a player's turn
+        print(f"It's Player {self.player_number}'s turn!")
+
+        busted = False
+        standing = False
+        while not busted or standing:
+            print(self.display_hands())
+            choice = get_player_choice("Would you like to [H]it, [S]tand, or [L]ook around the table at everyone else's hands", (HIT, STAND, LOOK))
+
+            if choice in LOOK:
+                for i in players:
+                    if i == 0:
+                        print(players[i].display_hands(dealer_hidden=True))
+                    else:
+                        print(players[i].display_hands())
+
+            elif choice in HIT:
+                deck.deal_out(self)
+                print(f"You just got dealt a {self.hand[-1]}.")
+                if all(hv > 21 for hv in self.get_hand_value()):
+                    busted = True
+                    print(self.display_hands())
+                    print(f"Player {self.player_number} has busted!")
+
+            elif choice in STAND:
+                standing = True
+                print(f"Player {self.player_number} has chosen to stand!")
+
+        if busted:
+            return -1
+        elif standing:
+            return max(hv < 22 for hv in self.get_hand_value())
+
+    def dealer_turn(self, deck):
+        #DEALER TURN!!!!!!!!
 
 """FUNCTIONS"""
 
@@ -113,6 +157,7 @@ def play_game(num_players):
     deck = Deck(6)
     shuffle(deck.shoe)
     players = {}
+    results = {}
 
     print(f"\nWelcome to this {num_players}-player game of Blackjack!")
     print("Prepping the game...")
@@ -126,12 +171,15 @@ def play_game(num_players):
 
         for player_num in range(0, num_players):  # creates hands for every player, player 0 is the dealer
             players[player_num] = Player(player_num)
-            deck.deal_out(player_num)
-            deck.deal_out(player_num)
+            deck.deal_out(players[player_num])
+            deck.deal_out(players[player_num])
 
+        for player_num in range(1, num_players):
+            results[player_num] = [player_num].player_turn(deck, players.values())
 
+        results[0] = players[0].dealer_turn(deck)
 
-
+        #THEN CHECK VICTORY CONDITIONS
 
 
         keep_playing = get_player_choice("Play another round?   ", [YES, NO])
