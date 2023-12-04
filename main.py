@@ -5,6 +5,7 @@
 """SET-UP"""
 from random import shuffle
 from itertools import product
+from collections import defaultdict
 
 RANKS = ("2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A")
 FACES = ("J", "Q", "K")
@@ -32,7 +33,7 @@ class Deck:
             self.shoe.append(r + s)
         if size_multiplier != 1:
             dupe = self.shoe
-            for i in range(1, size_multiplier-1):
+            for i in range(size_multiplier-1):
                 self.shoe = self.shoe + dupe
         shuffle(self.shoe)
 
@@ -59,7 +60,7 @@ class Player:
             elif card[0] in FACES:  # face cards are worth 10
                 hand_values[0] += 10
             else:  # number cards are worth their value
-                hand_values[0] += int(card[0])
+                hand_values[0] += int(card[:-1])
 
         for i in range(num_aces):  # ... and new hand values are created by adding 10! (1 or 11)
             hand_values.append(hand_values[i - 1] + 10)
@@ -85,7 +86,7 @@ class Player:
             if hand_size == 2:  # prints the cards legibly depending on if there is two or more cards
                 legible_hand = self.hand[0] + " and " + self.hand[1]
             else:
-                for i in range(0, hand_size-2):
+                for i in range(hand_size-1):
                     legible_hand = legible_hand + self.hand[i] + ", "
                 legible_hand = legible_hand + "and " + self.hand[-1]
 
@@ -94,7 +95,7 @@ class Player:
             elif num_hand_values == 2:
                 display = player + " has " + legible_hand + ". Their hand's value could be " + str(hand_values[0]) + " or " + str(hand_values[1]) + "."
             else:
-                for i in range(0, num_hand_values-1):
+                for i in range(num_hand_values-1):
                     legible_values = legible_values + hand_values[i] + ", "
                 display = player + " has " + legible_hand + ". Their hand's value could be " + legible_values + "or " + str(hand_values[-1]) + "."
 
@@ -105,9 +106,9 @@ class Player:
 
         busted = False
         standing = False
-        while not busted or standing:
+        while not busted or not standing:
             print(self.display_hands())
-            choice = get_player_choice("Would you like to [H]it, [S]tand, or [L]ook around the table at everyone else's hands", (HIT, STAND, LOOK))
+            choice = get_player_choice("Would you like to [H]it, [S]tand, or [L]ook around the table at everyone else's hands?      ", (HIT, STAND, LOOK))
 
             if choice in LOOK:
                 for i in players:
@@ -126,12 +127,12 @@ class Player:
 
             elif choice in STAND:
                 standing = True
-                print(f"Player {self.player_number} has chosen to stand at {max(hv < 22 for hv in self.get_hand_value())}!")
+                print(f"Player {self.player_number} has chosen to stand at {max(hv for hv in self.get_hand_value() if hv < 22)}!")
 
         if busted:
             return -1
         elif standing:
-            return max(hv < 22 for hv in self.get_hand_value())
+            return max(hv for hv in self.get_hand_value() if hv < 22)
 
     def dealer_turn(self, deck):
         print("It's The Dealer's turn! The Dealer will hit until they reach at least 17")
@@ -139,11 +140,11 @@ class Player:
 
         busted = False
         standing = False
-        while not busted or standing:
+        while not busted or not standing:
             print(print(self.display_hands()))
-            if max(hv < 22 for hv in self.get_hand_value()) >= 17:  # checks if dealer's hand has reached 17
+            if max(hv for hv in self.get_hand_value() if hv < 22) >= 17:  # checks if dealer's hand has reached 17
                 standing = True
-                print(f"The Dealer must stand at {max(hv < 22 for hv in self.get_hand_value())}")
+                print(f"The Dealer must stand at {max(hv for hv in self.get_hand_value() if hv < 22)}")
             elif all(hv > 21 for hv in self.get_hand_value()):  # checks if dealer has busted
                 busted = True
                 print("The Dealer has busted!")
@@ -154,12 +155,12 @@ class Player:
         if busted:
             return -1
         elif standing:
-            return max(hv < 22 for hv in self.get_hand_value())
+            return max(hv for hv in self.get_hand_value() if hv < 22)
 
     def check_for_blackjack(self):  # checks to see if a player or the dealer has been dealt a natural blackjack
         first_card = self.hand[0]
         second_card = self.hand[1]
-        if (first_card[0] in (FACES, "10") and second_card[0] == ACE) or (first_card[0] == ACE and second_card[0] in (FACES, "10")):
+        if (any(first_card[0] in x for x in (FACES, "10")) and second_card[0] == ACE) or (first_card[0] == ACE and any(second_card[0] in x for x in (FACES, "10"))):
             return True
         else:
             return False
@@ -190,18 +191,18 @@ def play_game(num_players):
     players = {}
 
     print(f"\nWelcome to this {num_players}-player game of Blackjack!")
-    print("Prepping the game...")
+    print("Prepping the game...\n")
     playing = True
 
     while playing:
-        results = {}
+        results = defaultdict(lambda: "")
 
         if len(deck.shoe) < 60:
             print("Reshuffling deck...")
             deck = Deck(6)
             shuffle(deck.shoe)
 
-        for player_num in range(0, num_players):  # creates new hands for every player, player 0 is the dealer
+        for player_num in range(0, num_players+1):  # creates new hands for every player, player 0 is the dealer
             players[player_num] = Player(player_num)
             deck.deal_out(players[player_num])
             deck.deal_out(players[player_num])
@@ -220,12 +221,12 @@ def play_game(num_players):
             print("Since The Dealer has a natural Blackjack, the game is automatically over!")
             for player_num in results:
                 print(f"Player {player_num} also has a natural Blackjack, and thus doesn't lose.")
-            for player_num in range(1, num_players):
+            for player_num in range(1, num_players+1):
                 if player_num not in results:
-                    print(f"Player {player_num} loses with a {max(hv < 22 for hv in players[player_num].get_hand_value())}.")
+                    print(f"Player {player_num} loses with a {max(hv for hv in players[player_num].get_hand_value() if hv < 22)}.")
 
         else:
-            for player_num in range(1, num_players):   # each player's turn
+            for player_num in range(1, num_players+1):   # each player's turn
                 if results[player_num] == "Blackjack":
                     print(f"Player {player_num}'s turn is skipped as they were dealt a natural Blackjack.")
                 else:
@@ -241,7 +242,7 @@ def play_game(num_players):
             else:
                 print(f"The Dealer has a {results[0]}.")
 
-            for player_num in range(1, num_players):
+            for player_num in range(1, num_players+1):
                 if results[player_num] == -1:
                     print(f"Player {player_num} busted, and thus loses this round.")
                 elif results[player_num] > results[0]:
