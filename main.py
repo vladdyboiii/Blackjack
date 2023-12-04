@@ -73,7 +73,7 @@ class Player:
         hand_values = self.get_hand_value()
         num_hand_values = len(hand_values)
 
-        if dealer_hidden:   # the dealer's second card is hidden until after all players have made their turn
+        if dealer_hidden and self.player_number == 0:   # the dealer's second card is hidden until after all players have made their turn
             display = f"The Dealer has {self.hand[0]} and one face-down card."
 
         else:   # for all other cases, the hand's legible value is gotten below:
@@ -126,7 +126,7 @@ class Player:
 
             elif choice in STAND:
                 standing = True
-                print(f"Player {self.player_number} has chosen to stand!")
+                print(f"Player {self.player_number} has chosen to stand at {max(hv < 22 for hv in self.get_hand_value())}!")
 
         if busted:
             return -1
@@ -134,7 +134,36 @@ class Player:
             return max(hv < 22 for hv in self.get_hand_value())
 
     def dealer_turn(self, deck):
-        #DEALER TURN!!!!!!!!
+        print("It's The Dealer's turn! The Dealer will hit until they reach at least 17")
+        print("Revealing their hand...")
+
+        busted = False
+        standing = False
+        while not busted or standing:
+            print(print(self.display_hands()))
+            if max(hv < 22 for hv in self.get_hand_value()) >= 17:  # checks if dealer's hand has reached 17
+                standing = True
+                print(f"The Dealer must stand at {max(hv < 22 for hv in self.get_hand_value())}")
+            elif all(hv > 21 for hv in self.get_hand_value()):  # checks if dealer has busted
+                busted = True
+                print("The Dealer has busted!")
+            else:
+                deck.deal_out(self)
+                print(f"The dealer must hit, and has drawn a {self.hand[-1]}.")
+
+        if busted:
+            return -1
+        elif standing:
+            return max(hv < 22 for hv in self.get_hand_value())
+
+    def check_for_blackjack(self):  # checks to see if a player or the dealer has been dealt a natural blackjack
+        first_card = self.hand[0]
+        second_card = self.hand[1]
+        if (first_card[0] in (FACES, "10") and second_card[0] == ACE) or (first_card[0] == ACE and second_card[0] in (FACES, "10")):
+            return True
+        else:
+            return False
+
 
 """FUNCTIONS"""
 
@@ -142,10 +171,10 @@ class Player:
 def get_player_choice(question, valid_inputs):
     """A function that gets a player's choice using menu options, re-asking if the input is not understood"""
 
-    player_input = input(question)
+    player_input = input(question).lower()
     valid_choice = False
     while not valid_choice:
-        if player_input.lower() in valid_inputs:
+        if any(player_input in vi for vi in valid_inputs):
             valid_choice = True
         else:
             print("That wasn't understood, please enter a valid input.")
@@ -154,38 +183,76 @@ def get_player_choice(question, valid_inputs):
 
 
 def play_game(num_players):
+    """A function that plays a #-player game of Blackjack"""
+
     deck = Deck(6)
     shuffle(deck.shoe)
     players = {}
-    results = {}
 
     print(f"\nWelcome to this {num_players}-player game of Blackjack!")
     print("Prepping the game...")
     playing = True
 
     while playing:
+        results = {}
+
         if len(deck.shoe) < 60:
             print("Reshuffling deck...")
             deck = Deck(6)
             shuffle(deck.shoe)
 
-        for player_num in range(0, num_players):  # creates hands for every player, player 0 is the dealer
+        for player_num in range(0, num_players):  # creates new hands for every player, player 0 is the dealer
             players[player_num] = Player(player_num)
             deck.deal_out(players[player_num])
             deck.deal_out(players[player_num])
+            print(players[player_num].display_hands(dealer_hidden=True))
 
-        for player_num in range(1, num_players):
-            results[player_num] = [player_num].player_turn(deck, players.values())
+            if players[player_num].check_for_blackjack():   # checks to see if anyone has a natural blackjack, which is an auto-win
+                results[player_num] = "Blackjack"
+                if player_num == 0:
+                    print(players[player_num].display_hands(dealer_hidden=False))
+                    print("The Dealer has been dealt a natural Blackjack!")
+                else:
+                    print(f"Player {player_num} has been dealt a natural Blackjack!")
+        print()
 
-        results[0] = players[0].dealer_turn(deck)
+        if results[0] == "Blackjack":   # if the dealer has a blackjack, the game is over automatically
+            print("Since The Dealer has a natural Blackjack, the game is automatically over!")
+            for player_num in results:
+                print(f"Player {player_num} also has a natural Blackjack, and thus doesn't lose.")
+            for player_num in range(1, num_players):
+                if player_num not in results:
+                    print(f"Player {player_num} loses with a {max(hv < 22 for hv in players[player_num].get_hand_value())}.")
 
-        #THEN CHECK VICTORY CONDITIONS
+        else:
+            for player_num in range(1, num_players):   # each player's turn
+                if results[player_num] == "Blackjack":
+                    print(f"Player {player_num}'s turn is skipped as they were dealt a natural Blackjack.")
+                else:
+                    results[player_num] = players[player_num].player_turn(deck, players.values())
+                print()
 
+            results[0] = players[0].dealer_turn(deck)   # dealer's turn
+            print()
+
+            print("The round is over!")
+            if results[0] == -1:
+                print("The Dealer busted this round!")
+            else:
+                print(f"The Dealer has a {results[0]}.")
+
+            for player_num in range(1, num_players):
+                if results[player_num] == -1:
+                    print(f"Player {player_num} busted, and thus loses this round.")
+                elif results[player_num] > results[0]:
+                    print(f"Player {player_num} beats The Dealer with a {results[player_num]}!")
+                else:
+                    print(f"Player {player_num} loses with a {results[player_num]}.")
 
         keep_playing = get_player_choice("Play another round?   ", [YES, NO])
         if keep_playing in NO:
             playing = False
-            print("That was fun!")
+            print("Quitting back to the main menu...")
         elif keep_playing in YES:
             playing = True
             print("Another round it is!")
@@ -199,20 +266,6 @@ while running:
     menu_choice = get_player_choice("How many human players are there? Pick a number between 1 and 6!\n(Enter \"[Q]uit\" to exit the game)    ", (POSSIBLE_NUM_PLAYERS, QUIT))
     if menu_choice in POSSIBLE_NUM_PLAYERS.keys():
         play_game(POSSIBLE_NUM_PLAYERS[menu_choice])
-    elif menu_choice.lower() == "quit":
+    elif menu_choice in QUIT:
         running = False
-    print("Thanks for playing!")
-
-"""TEST"""
-"""
-mydeck = Deck()
-print(mydeck.shoe)
-print(len(mydeck.shoe))
-
-player1 = Player(1)
-mydeck.deal_out(player1)
-mydeck.deal_out(player1)
-print(player1.get_hand_value())
-
-print(len(mydeck.shoe))
-"""
+        print("Thanks for playing!")
