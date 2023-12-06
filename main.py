@@ -96,7 +96,7 @@ class Player:
                 display = player + " has " + legible_hand + ". Their hand's value could be " + str(hand_values[0]) + " or " + str(hand_values[1]) + "."
             else:
                 for i in range(num_hand_values-1):
-                    legible_values = legible_values + hand_values[i] + ", "
+                    legible_values = legible_values + f"{hand_values[i]}, "
                 display = player + " has " + legible_hand + ". Their hand's value could be " + legible_values + "or " + str(hand_values[-1]) + "."
 
         return display  # returns the string to display
@@ -106,21 +106,27 @@ class Player:
 
         busted = False
         standing = False
-        while not busted or not standing:
+        while not busted and not standing:
             print(self.display_hands())
-            choice = get_player_choice("Would you like to [H]it, [S]tand, or [L]ook around the table at everyone else's hands?      ", (HIT, STAND, LOOK))
+            choice = get_player_choice("Would you like to [H]it, [S]tand, or [L]ook around the table at everyone else's hands?  ", (HIT, STAND, LOOK))
 
             if choice in LOOK:
+                print()
                 for i in players:
                     if i == 0:
                         print(players[i].display_hands(dealer_hidden=True))
-                    else:
+                    elif i != self.player_number:
                         print(players[i].display_hands())
+                print()
 
             elif choice in HIT:
                 deck.deal_out(self)
                 print(f"You just got dealt a {self.hand[-1]}.")
-                if all(hv > 21 for hv in self.get_hand_value()):
+                if any(hv == 21 for hv in self.get_hand_value()):
+                    standing = True
+                    print(self.display_hands())
+                    print(f"Player {self.player_number} has a 21, and thus auto-stands!")
+                elif all(hv > 21 for hv in self.get_hand_value()):
                     busted = True
                     print(self.display_hands())
                     print(f"Player {self.player_number} has busted!")
@@ -140,14 +146,14 @@ class Player:
 
         busted = False
         standing = False
-        while not busted or not standing:
-            print(print(self.display_hands()))
-            if max(hv for hv in self.get_hand_value() if hv < 22) >= 17:  # checks if dealer's hand has reached 17
-                standing = True
-                print(f"The Dealer must stand at {max(hv for hv in self.get_hand_value() if hv < 22)}")
-            elif all(hv > 21 for hv in self.get_hand_value()):  # checks if dealer has busted
+        while not busted and not standing:
+            print(self.display_hands())
+            if all(hv > 21 for hv in self.get_hand_value()):  # checks if dealer has busted
                 busted = True
                 print("The Dealer has busted!")
+            elif max(hv for hv in self.get_hand_value() if hv < 22) >= 17:  # checks if dealer's hand has reached 17
+                standing = True
+                print(f"The Dealer must stand at {max(hv for hv in self.get_hand_value() if hv < 22)}")
             else:
                 deck.deal_out(self)
                 print(f"The dealer must hit, and has drawn a {self.hand[-1]}.")
@@ -215,12 +221,14 @@ def play_game(num_players):
                     print("The Dealer has been dealt a natural Blackjack!")
                 else:
                     print(f"Player {player_num} has been dealt a natural Blackjack!")
+        if not results:
+            print("There are no natural Blackjacks this round.")
         print()
 
         if results[0] == "Blackjack":   # if the dealer has a blackjack, the game is over automatically
             print("Since The Dealer has a natural Blackjack, the game is automatically over!")
             for player_num in results:
-                print(f"Player {player_num} also has a natural Blackjack, and thus doesn't lose.")
+                print(f"Player {player_num} also has a natural Blackjack, and thus ties.")
             for player_num in range(1, num_players+1):
                 if player_num not in results:
                     print(f"Player {player_num} loses with a {max(hv for hv in players[player_num].get_hand_value() if hv < 22)}.")
@@ -230,7 +238,7 @@ def play_game(num_players):
                 if results[player_num] == "Blackjack":
                     print(f"Player {player_num}'s turn is skipped as they were dealt a natural Blackjack.")
                 else:
-                    results[player_num] = players[player_num].player_turn(deck, players.values())
+                    results[player_num] = players[player_num].player_turn(deck, players)
                 print()
 
             results[0] = players[0].dealer_turn(deck)   # dealer's turn
@@ -243,20 +251,26 @@ def play_game(num_players):
                 print(f"The Dealer has a {results[0]}.")
 
             for player_num in range(1, num_players+1):
-                if results[player_num] == -1:
+                if results[player_num] == "Blackjack":
+                    print(f"Player {player_num} wins with their natural Blackjack!")
+                elif results[player_num] == -1:
                     print(f"Player {player_num} busted, and thus loses this round.")
                 elif results[player_num] > results[0]:
                     print(f"Player {player_num} beats The Dealer with a {results[player_num]}!")
+                elif results[player_num] == results[0]:
+                    print(f"Player {player_num} ties the dealer with their {results[player_num]}.")
                 else:
                     print(f"Player {player_num} loses with a {results[player_num]}.")
 
-        keep_playing = get_player_choice("Play another round?   ", [YES, NO])
+        print()
+        keep_playing = get_player_choice("Play another round? ([Y]es or [N]o)   ", [YES, NO])
         if keep_playing in NO:
             playing = False
             print("Quitting back to the main menu...")
         elif keep_playing in YES:
             playing = True
             print("Another round it is!")
+        print()
 
 
 """MAIN"""
