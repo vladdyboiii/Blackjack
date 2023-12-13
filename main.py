@@ -3,6 +3,7 @@
 # Licensed under the MIT License
 
 """SET-UP"""
+
 from random import shuffle
 from itertools import product
 from collections import defaultdict
@@ -27,7 +28,9 @@ LOOK = ("l", "look")
 class Deck:
     """A simple representation of a deck of playing cards"""
 
-    def __init__(self, size_multiplier=1):  # creates a deck of multiples of 52 cards and shuffles it
+    def __init__(self, size_multiplier=1):
+        """creates a deck of multiples of 52 cards and shuffles it"""
+
         self.shoe = []
         for r, s in product(RANKS, SUITS):
             self.shoe.append(r + s)
@@ -37,7 +40,9 @@ class Deck:
                 self.shoe = self.shoe + dupe
         shuffle(self.shoe)
 
-    def deal_out(self, player):  # deals a card out from the deck
+    def deal_out(self, player):
+        """deals a card out from top (index 0) of the deck"""
+
         top_card = self.shoe.pop(0)
         player.hand.append(top_card)
 
@@ -49,7 +54,9 @@ class Player:
         self.player_number = player_number
         self.hand = []
 
-    def get_hand_value(self):  # returns the value(s) of a player's hand
+    def get_hand_value(self):
+        """returns the value(s) of a player's hand"""
+
         hand_values = [0]
         num_aces = 0
 
@@ -67,7 +74,9 @@ class Player:
 
         return hand_values
 
-    def display_hands(self, dealer_hidden=False):    # returns info about the player's hand in a legible manner
+    def display_hands(self, dealer_hidden=False):
+        """returns info about the player's hand in a legible manner"""
+
         legible_hand = ""
         legible_values = ""
         hand_size = len(self.hand)
@@ -101,7 +110,9 @@ class Player:
 
         return display  # returns the string to display
 
-    def player_turn(self, deck, players):  # the goings-on of a player's turn
+    def player_turn(self, deck, players):
+        """the goings-on of a player's turn"""
+
         print(f"It's Player {self.player_number}'s turn!")
 
         busted = False
@@ -141,6 +152,8 @@ class Player:
             return max(hv for hv in self.get_hand_value() if hv < 22)
 
     def dealer_turn(self, deck):
+        """takes the dealer's turn, stopping once 17 is recahed"""
+
         print("It's The Dealer's turn! The Dealer will hit until they reach at least 17")
         print("Revealing their hand...")
 
@@ -163,7 +176,9 @@ class Player:
         elif standing:
             return max(hv for hv in self.get_hand_value() if hv < 22)
 
-    def check_for_blackjack(self):  # checks to see if a player or the dealer has been dealt a natural blackjack
+    def check_for_blackjack(self):
+        """checks to see if a player or the dealer has been dealt a natural blackjack"""
+
         first_card = self.hand[0]
         second_card = self.hand[1]
         if (any(first_card[0] in x for x in (FACES, "10")) and second_card[0] == ACE) or (first_card[0] == ACE and any(second_card[0] in x for x in (FACES, "10"))):
@@ -184,8 +199,8 @@ def get_player_choice(question, valid_inputs):
         if any(player_input in vi for vi in valid_inputs):
             valid_choice = True
         else:
-            print("That wasn't understood, please enter a valid input.")
-            player_input = input(question)
+            print(f"\"{player_input}\" is not a valid input, please try again.")
+            player_input = input(question).lower()
     return player_input
 
 
@@ -274,7 +289,6 @@ def play_game(num_players):
 
 
 """MAIN"""
-
 running = True
 while running:
     print("Welcome to Blackjack!")
